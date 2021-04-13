@@ -32,13 +32,81 @@ main_page <- tabPanel(
         ),
         tabPanel(
           title = "Statistics", 
-          tableOutput("table")
+          fluidRow(
+            column(width = 4, strong(textOutput("num_var_1_title"))),
+            column(width = 4, strong(textOutput("num_var_2_title"))),
+            column(width = 4, strong(textOutput("fact_var_title")))
+          ),
+          fluidRow(
+            column(width = 4, tableOutput("num_var_1_summary_table")),
+            column(width = 4, tableOutput("num_var_2_summary_table")),
+            column(width = 4, tableOutput("fact_var_summary_table"))
+          )
         )
       )
     )
   )
 )
 
+draw_plot_1 <- function(data_input, num_var_1, num_var_2, fact_var){
+    if(num_var_1 != not_sel & num_var_2 != not_sel & fact_var != not_sel){
+      ggplot(data = data_input,
+             aes_string(x = num_var_1, y = num_var_2, color = fact_var)) +
+        geom_point()
+    }
+    else if(num_var_1 != not_sel & num_var_2 != not_sel & fact_var == not_sel){
+      ggplot(data = data_input,
+             aes_string(x = num_var_1, y = num_var_2)) +
+        geom_point()
+    }
+    else if(num_var_1 != not_sel & num_var_2 == not_sel & fact_var != not_sel){
+      ggplot(data = data_input,
+             aes_string(x = fact_var, y = num_var_1)) +
+        geom_violin()
+    }
+    else if(num_var_1 == not_sel & num_var_2 != not_sel & fact_var != not_sel){
+      ggplot(data = data_input,
+             aes_string(x = fact_var, y = num_var_2)) +
+        geom_violin()
+    }
+    else if(num_var_1 != not_sel & num_var_2 == not_sel & fact_var == not_sel){
+      ggplot(data = data_input,
+             aes_string(x = num_var_1)) +
+        geom_histogram()
+    }
+    else if(num_var_1 == not_sel & num_var_2 != not_sel & fact_var == not_sel){
+      ggplot(data = data_input,
+             aes_string(x = num_var_2)) +
+        geom_histogram()
+    }
+    else if(num_var_1 == not_sel & num_var_2 == not_sel & fact_var != not_sel){
+      ggplot(data = data_input,
+             aes_string(x = fact_var)) +
+        geom_bar()
+    }
+}
+
+create_num_var_table <- function(data_input, num_var){
+  if(num_var != not_sel){
+    col <- data_input[,get(num_var)]
+    if (length(col)>5000) col_norm <- sample(col,5000) else col_norm <- col
+    norm_test <- shapiro.test(col_norm)
+    statistic <- c("Mean", "Median", "5th Percentile", "95th Percentile", 
+                   "Shapiro Statistic", "Shapiro P-Value")
+    value <- c(round(mean(col),2), round(median(col),2), 
+                round(quantile(col, 0.05),2), round(quantile(col, 0.95),2),
+               norm_test$statistic, norm_test$p.value)
+    data.table(statistic, value)
+  }
+}
+
+create_fact_var_table <- function(data_input, fact_var){
+  if(fact_var != not_sel){
+    freq_tbl <- data_input[,.N, by = get(fact_var)]
+    freq_tbl <- setnames(freq_tbl,c("factor_value", "count"))
+    freq_tbl
+  }
+}
 
 ui <- navbarPage(
   title = "Data Analyser", 
@@ -68,47 +136,40 @@ server <- function(input, output){
   fact_var <- eventReactive(input$run_button,input$fact_var)
   
   plot_1 <- eventReactive(input$run_button,{
-    if(num_var_1() != not_sel & num_var_2() != not_sel & fact_var() != not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = num_var_1(), y = num_var_2(), color = fact_var())) + 
-        geom_point() 
-    } 
-    else if(num_var_1() != not_sel & num_var_2() != not_sel & fact_var() == not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = num_var_1(), y = num_var_2())) + 
-        geom_point()  
-    }
-    else if(num_var_1() != not_sel & num_var_2() == not_sel & fact_var() != not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = fact_var(), y = num_var_1())) + 
-        geom_violin()
-    }
-    else if(num_var_1() == not_sel & num_var_2() != not_sel & fact_var() != not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = fact_var(), y = num_var_2())) + 
-        geom_violin()
-    }
-    else if(num_var_1() != not_sel & num_var_2() == not_sel & fact_var() == not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = num_var_1())) + 
-        geom_histogram()
-    }
-    else if(num_var_1() == not_sel & num_var_2() != not_sel & fact_var() == not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = num_var_2())) + 
-        geom_histogram()
-    }
-    else if(num_var_1() == not_sel & num_var_2() == not_sel & fact_var() != not_sel){
-      ggplot(data = data_input(), 
-             aes_string(x = fact_var())) + 
-        geom_bar()
-    }    
+    draw_plot_1(data_input(), num_var_1(), num_var_2(), fact_var())
   })
   
   output$plot_1 <- renderPlot(plot_1())
+  
+  output$num_var_1_title <- renderText(num_var_1())
+  
+  num_var_1_summary_table <- eventReactive(input$run_button,{
+    create_num_var_table(data_input(), num_var_1())  
+  })
+  
+  output$num_var_1_summary_table <- renderTable(num_var_1_summary_table(),colnames = FALSE)
+  
+  output$num_var_2_title <- renderText(num_var_2())
+  
+  num_var_2_summary_table <- eventReactive(input$run_button,{
+    create_num_var_table(data_input(), num_var_2())  
+  })
+  
+  output$num_var_2_summary_table <- renderTable(num_var_2_summary_table(),colnames = FALSE)
+  
+  output$fact_var_title <- renderText(fact_var())
+  
+  fact_var_summary_table <- eventReactive(input$run_button,{
+    create_fact_var_table(data_input(), fact_var())  
+  })
+  
+  output$fact_var_summary_table <- renderTable(fact_var_summary_table(),colnames = FALSE)
+  
 }
 
 shinyApp(ui = ui, server = server)
+
+
 
 
 
