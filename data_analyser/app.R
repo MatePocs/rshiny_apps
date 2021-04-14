@@ -91,8 +91,8 @@ create_num_var_table <- function(data_input, num_var){
     col <- data_input[,get(num_var)]
     if (length(col)>5000) col_norm <- sample(col,5000) else col_norm <- col
     norm_test <- shapiro.test(col_norm)
-    statistic <- c("Mean", "Median", "5th Percentile", "95th Percentile", 
-                   "Shapiro Statistic", "Shapiro P-Value")
+    statistic <- c("mean", "median", "5th percentile", "95th percentile", 
+                   "Shapiro statistic", "Shapiro p-value")
     value <- c(round(mean(col),2), round(median(col),2), 
                 round(quantile(col, 0.05),2), round(quantile(col, 0.95),2),
                norm_test$statistic, norm_test$p.value)
@@ -141,7 +141,7 @@ server <- function(input, output){
   
   output$plot_1 <- renderPlot(plot_1())
   
-  output$num_var_1_title <- renderText(num_var_1())
+  output$num_var_1_title <- renderText(paste("Num Var 1:",num_var_1()))
   
   num_var_1_summary_table <- eventReactive(input$run_button,{
     create_num_var_table(data_input(), num_var_1())  
@@ -149,7 +149,7 @@ server <- function(input, output){
   
   output$num_var_1_summary_table <- renderTable(num_var_1_summary_table(),colnames = FALSE)
   
-  output$num_var_2_title <- renderText(num_var_2())
+  output$num_var_2_title <- renderText(paste("Num Var 2:",num_var_2()))
   
   num_var_2_summary_table <- eventReactive(input$run_button,{
     create_num_var_table(data_input(), num_var_2())  
@@ -157,7 +157,7 @@ server <- function(input, output){
   
   output$num_var_2_summary_table <- renderTable(num_var_2_summary_table(),colnames = FALSE)
   
-  output$fact_var_title <- renderText(fact_var())
+  output$fact_var_title <- renderText(paste("Factor Var:",fact_var()))
   
   fact_var_summary_table <- eventReactive(input$run_button,{
     create_fact_var_table(data_input(), fact_var())  
