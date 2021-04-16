@@ -13,7 +13,6 @@ about_page <- tabPanel(
   "2021 April"
 )
 
-
 main_page <- tabPanel(
   title = "Analysis",
   titlePanel("Analysis"),
@@ -31,7 +30,7 @@ main_page <- tabPanel(
       tabsetPanel(
         tabPanel(
           title = "Plot",
-          plotOutput("plot_1"),
+          plotOutput("plot_1")
         ),
         tabPanel(
           title = "Statistics",
@@ -45,6 +44,7 @@ main_page <- tabPanel(
             column(width = 4, tableOutput("num_var_2_summary_table")),
             column(width = 4, tableOutput("fact_var_summary_table"))
           )
+          
         )
       )
     )
@@ -152,9 +152,7 @@ server <- function(input, output){
   })
 
   num_var_1 <- eventReactive(input$run_button,input$num_var_1)
-
   num_var_2 <- eventReactive(input$run_button,input$num_var_2)
-
   fact_var <- eventReactive(input$run_button,input$fact_var)
 
   plot_1 <- eventReactive(input$run_button,{
