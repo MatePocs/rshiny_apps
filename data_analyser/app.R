@@ -43,6 +43,12 @@ main_page <- tabPanel(
             column(width = 4, tableOutput("num_var_1_summary_table")),
             column(width = 4, tableOutput("num_var_2_summary_table")),
             column(width = 4, tableOutput("fact_var_summary_table"))
+          ),
+          fluidRow(
+            column(width = 12, strong("Combined Statistics"))
+          ),
+          fluidRow(
+            column(width = 12, tableOutput("combined_summary_table"))
           )
           
         )
@@ -114,20 +120,23 @@ create_fact_var_table <- function(data_input, fact_var){
 create_combined_table <- function(data_input, num_var_1, num_var_2, fact_var){
   if(fact_var != not_sel){
     if(num_var_1 != not_sel & num_var_2 != not_sel){
-
+      res_tbl <- data_input[,.(correlation = cor(get(num_var_1), get(num_var_2))), by = fact_var]
     }
     else if(num_var_1 != not_sel & num_var_2 == not_sel){
-
+      res_tbl <- data_input[,.(mean = mean(get(num_var_1))), by = fact_var]
     }
-    else if(num_var_1 != not_sel & num_var_2 == not_sel){
-
+    else if(num_var_1 == not_sel & num_var_2 != not_sel){
+      res_tbl <- data_input[,.(mean = mean(get(num_var_2))), by = fact_var]
     }
   }
   else if(num_var_1 != not_sel & num_var_2 != not_sel){
-    corr_tbl <- data_table(
+    res_tbl <- data.table(
       statistic = c("correlation"),
-      value = cor(data_input()[,get(num_var_1)]))
+      value = c(cor(
+        data_input[,get(num_var_1)],
+        data_input[,get(num_var_2)])))
   }
+  return(res_tbl)
 }
 
 ui <- navbarPage(
@@ -138,6 +147,8 @@ ui <- navbarPage(
 )
 
 server <- function(input, output){
+  
+  options(shiny.maxRequestSize=10*1024^2) 
 
   data_input <- reactive({
     req(input$csv_input)
@@ -155,11 +166,15 @@ server <- function(input, output){
   num_var_2 <- eventReactive(input$run_button,input$num_var_2)
   fact_var <- eventReactive(input$run_button,input$fact_var)
 
+  # plot
+  
   plot_1 <- eventReactive(input$run_button,{
     draw_plot_1(data_input(), num_var_1(), num_var_2(), fact_var())
   })
 
   output$plot_1 <- renderPlot(plot_1())
+  
+  # 1-d summary tables
 
   output$num_var_1_title <- renderText(paste("Num Var 1:",num_var_1()))
 
@@ -184,6 +199,14 @@ server <- function(input, output){
   })
 
   output$fact_var_summary_table <- renderTable(fact_var_summary_table(),colnames = FALSE)
+  
+  # multi-d summary table
+  
+  combined_summary_table <- eventReactive(input$run_button,{
+    create_combined_table(data_input(), num_var_1(), num_var_2(), fact_var())
+  })
+  
+  output$combined_summary_table <- renderTable(combined_summary_table())
 
 }
 
