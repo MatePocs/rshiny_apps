@@ -58,6 +58,9 @@ main_page <- tabPanel(
 )
 
 draw_plot_1 <- function(data_input, num_var_1, num_var_2, fact_var){
+    if(fact_var!=not_sel){
+      data_input[,(fact_var):= as.factor(data_input[,get(fact_var)])]
+    }
     if(num_var_1 != not_sel & num_var_2 != not_sel & fact_var != not_sel){
       ggplot(data = data_input,
              aes_string(x = num_var_1, y = num_var_2, color = fact_var)) +
@@ -141,7 +144,7 @@ create_combined_table <- function(data_input, num_var_1, num_var_2, fact_var){
 
 ui <- navbarPage(
   title = "Data Analyser",
-  # theme = shinytheme('united'),
+  theme = shinytheme('united'),
   main_page,
   about_page
 )
@@ -212,7 +215,4 @@ server <- function(input, output){
 
 shinyApp(ui = ui, server = server)
 
-
-
-
-
+runApp("/Users/flatiron/Documents/R_Work/RShiny_Apps/data_analyser", display.mode = "showcase")
