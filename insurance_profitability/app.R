@@ -7,7 +7,16 @@ library(ggplot2)
 
 not_sel <- "Not Selected"
 
-features_list <- c(not_sel, "make", "region")
+original_features <- c("area", "region", "driving_restriction", 
+                       "make", "fuel", "transmission", "num_veh_seats",
+                       "ph_employment_status", "ph_business_desc", 
+                       "ph_occupation_name", "owner_type")
+
+grouped_features <- c("grp_unplugged_journeys", "grp_num_unplugs", "grp_num_journeys", 
+                      "grp_total_miles", "grp_ncd", "grp_engine_size", "grp_veh_age", 
+                      "grp_years_owned", "grp_veh_value", "grp_ph_age", "grp_ph_licence_years")
+
+features_list <- c(not_sel, original_features, grouped_features)
 
 dt <- fread('data/data_cleaned.csv')
 
@@ -67,6 +76,8 @@ create_od_dt <- function(
   if(claim_max > 0){
     od_dt[,claims_incurred := pmin(claims_incurred, claim_max)]
   }
+  
+  od_dt[,eval(col_to_analyse) := as.character(get(col_to_analyse))]
   
   od_dt <- od_dt[,.(
     count = .N, 
