@@ -49,16 +49,22 @@ main_page <- tabPanel(
       actionButton("delete_button", "Clear Analysis", icon = icon("trash"), style = "width:150px")
     ),
     mainPanel(
-      tabsetPanel(
+      tabsetPanel(id = "main_tabset",
         tabPanel(
-          title = "Plot",
-          plotOutput("plot_1"),
+          title = "Plots",value = "plots",
+          plotOutput("plot_1", click = "plot_click"),
           plotOutput("plot_2"),
           plotOutput("plot_3")
         ),
         tabPanel(
-          title = "Table",
+          title = "Table",value = "table",
           tableOutput("table_1")
+        ),
+        tabPanel(
+          title = "Details",value = "details",
+          textOutput("category_value"),
+          plotOutput("plot_4"),
+          plotOutput("plot_5")
         )
       )
     )
@@ -139,10 +145,10 @@ draw_plot_1 <- function(data_input, col_to_analyse){
 }
 
 draw_plot_2 <- function(data_input, col_to_analyse){
-  plt_tbl <- data_input[,.(get(col_to_analyse),premium, claims_incurred)]
-  setnames(plt_tbl, old = "V1", new = col_to_analyse)
-  plt_tbl <- melt.data.table(plt_tbl, measure_vars = c("claims_incurred", "premium"), id.vars = c(col_to_analyse))
-  p2 <- ggplot(data = plt_tbl, aes(x = get(col_to_analyse), y = value, fill  = variable)) + 
+  plot_tbl <- data_input[,.(get(col_to_analyse),premium, claims_incurred)]
+  setnames(plot_tbl, old = "V1", new = col_to_analyse)
+  plot_tbl <- melt.data.table(plot_tbl, measure_vars = c("claims_incurred", "premium"), id.vars = c(col_to_analyse))
+  p2 <- ggplot(data = plot_tbl, aes(x = get(col_to_analyse), y = value, fill  = variable)) + 
     geom_bar(position = 'dodge', stat = 'identity', color = "grey70") + 
     scale_fill_manual(values = c("dodgerblue4", "red4")) +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1), legend.position = "top",axis.title.x=element_blank()) + 
@@ -158,6 +164,43 @@ draw_plot_3 <- function(data_input, col_to_analyse){
   return(p3)
 }
 
+# TODO
+# technically, you can pass on LOW EXPOSURE to the function below
+# it won't crash
+# but probably should drop a warning message / don't activate Details tab
+
+draw_plot_4 <- function(data_input, col_to_analyse, category_value){
+  # premium_plot
+  plot_tbl <- data_input[get(col_to_analyse) == category_value,]
+  p4 <- ggplot(data = plot_tbl, aes(x = premium)) + 
+    geom_histogram(fill = "dodgerblue4", color = "grey70") + 
+    scale_y_continuous(breaks = pretty_breaks()) + 
+    scale_x_continuous(breaks = pretty_breaks()) + 
+    labs(title = "Premium histogram", subtitle = "all policies, net") + 
+    xlab("net premium (GBP)") + 
+    ylab("count") + 
+    theme(plot.margin=unit(c(0.1,0.75,0.1,0.1),"cm"))
+  return(p4)
+}
+
+draw_plot_5 <- function(data_input, col_to_analyse, category_value){
+  # claims plot
+  plot_tbl <- data_input[get(col_to_analyse) == category_value & claims_incurred > 0,]
+  p5 <- ggplot(data = plot_tbl, aes(x = claims_incurred)) + 
+    geom_histogram(fill = "red4", color = "grey70") + 
+    scale_y_continuous(breaks = pretty_breaks()) + 
+    scale_x_continuous(label = comma, breaks = breaks_pretty()) +
+    labs(title = "Claims incurred histogram", subtitle = "positive claims only") +
+    xlab("claims incurred (GBP)") + 
+    ylab("count") + 
+    theme(plot.margin=unit(c(0.1,0.75,0.1,0.1),"cm"))
+  return(p5)
+}
+
+get_category_value_from_plot <- function(data_input, col_to_analyse, x){
+  return(levels(data_input[,get(col_to_analyse)])[x])
+}
+
 
 ui <- navbarPage(
   title = "Car Insurance Company",
@@ -166,7 +209,7 @@ ui <- navbarPage(
   about_page
 )
 
-server <- function(input, output){
+server <- function(input, output, session){
   
   options(shiny.maxRequestSize=10*1024^2) 
 
@@ -180,6 +223,8 @@ server <- function(input, output){
   green_upper <- eventReactive(input$run_button,input$slider_green[2])
   amber_lower <- eventReactive(input$run_button,input$slider_amber[1])
   amber_upper <- eventReactive(input$run_button,input$slider_amber[2])
+  
+  plot_click_x <- eventReactive(input$plot_click, round(input$plot_click$x))
   
   # table
   
@@ -209,6 +254,29 @@ server <- function(input, output){
     draw_plot_3(data_input = od_dt(), col_to_analyse = col_to_analyse())
   })
   output$plot_3 <- renderPlot(plot_3())
+  
+  # details tab
+  # this is a bit wobbly now, assume we have an od_dt
+  category_value <- eventReactive(input$plot_click, {
+    get_category_value_from_plot(data_input = od_dt(), col_to_analyse = col_to_analyse(), x = plot_click_x())
+  })
+  output$category_value <- renderText(paste0(col_to_analyse(), " = " ,category_value()))
+  
+  plot_4 <- eventReactive(input$plot_click,{
+    draw_plot_4(data_input = dt, col_to_analyse = col_to_analyse(), category_value = category_value())
+  })
+  output$plot_4 <- renderPlot(plot_4())
+  
+  plot_5 <- eventReactive(input$plot_click,{
+    draw_plot_5(data_input = dt, col_to_analyse = col_to_analyse(), category_value = category_value())
+  })
+  output$plot_5 <- renderPlot(plot_5())
+  
+  # note: this needs a session
+  # after click, activate
+  observeEvent(input$plot_click,{
+    updateTabsetPanel(session, "main_tabset", selected = "details")
+  })
   
   # delete button
   observeEvent(input$delete_button,{
