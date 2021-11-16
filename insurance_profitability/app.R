@@ -4,6 +4,8 @@ library(shiny)
 library(shinythemes)
 library(data.table)
 library(ggplot2)
+library(scales)
+library(stringr)
 
 not_sel <- "Not Selected"
 
@@ -13,7 +15,7 @@ original_features <- c("area", "region", "driving_restriction",
                        "ph_occupation_name", "owner_type")
 
 grouped_features <- c("grp_unplugged_journeys", "grp_num_unplugs", "grp_num_journeys", 
-                      "grp_total_miles", "grp_ncd", "grp_engine_size", "grp_veh_age", 
+                      "grp_total_miles", "grp_total_miles_exp_adj", "grp_ncd", "grp_engine_size", "grp_veh_age", 
                       "grp_years_owned", "grp_veh_value", "grp_ph_age", "grp_ph_licence_years")
 
 features_list <- c(not_sel, original_features, grouped_features)
@@ -52,9 +54,9 @@ main_page <- tabPanel(
       tabsetPanel(id = "main_tabset",
         tabPanel(
           title = "Plots",value = "plots",
-          plotOutput("plot_1", click = "plot_click"),
-          plotOutput("plot_2"),
-          plotOutput("plot_3")
+          plotOutput("plot_1", click = "plot_click", height = "250px"),
+          plotOutput("plot_2", height = "250px"),
+          plotOutput("plot_3", height = "250px")
         ),
         tabPanel(
           title = "Table",value = "table",
@@ -63,8 +65,8 @@ main_page <- tabPanel(
         tabPanel(
           title = "Details",value = "details",
           textOutput("category_value"),
-          plotOutput("plot_4"),
-          plotOutput("plot_5")
+          plotOutput("plot_4", height = "250px"),
+          plotOutput("plot_5", height = "250px")
         )
       )
     )
