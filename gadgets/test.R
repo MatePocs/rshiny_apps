@@ -8,11 +8,16 @@ library(ggplot2)
 ggbrush <- function(data, xvar, yvar) {
   
   ui <- miniPage(
-    gadgetTitleBar("Drag to select points"),
+    # gadgetTitleBar("Drag to select points"), # this automatically includes the Done and Cancel buttons
+    
+    gadgetTitleBar("my gadget title", 
+                   left = miniTitleBarButton("select", "Select", primary = FALSE),
+                   right = miniTitleBarButton("done", "Done", primary = FALSE)),
+    
     miniContentPanel(
       # The brush="brush" argument means we can listen for
       # brush events on the plot using input$brush.
-      plotOutput("plot", height = "100%", brush = "brush")
+      plotOutput("plot", height = "100%", brush = "brush"), padding = 0
     )
   )
   
@@ -29,20 +34,25 @@ ggbrush <- function(data, xvar, yvar) {
       # Return the brushed points. See ?shiny::brushedPoints.
       stopApp(brushedPoints(data, input$brush))
     })
+    
+    observeEvent(input$cancel, {
+      stopApp(NULL)
+    })
+    
   }
   
-  # runGadget(ui, server, viewer = paneViewer(minHeight = 500)) # to render in viewer but set height to min
+  runGadget(ui, server, stopOnCancel = FALSE, viewer = paneViewer(minHeight = 500)) # to render in viewer but set height to min
   # runGadget(ui, server, viewer = dialogViewer("ggbrush")) # to open a popup window
-  runGadget(ui, server, viewer = browserViewer()) # in a browser window
+  # runGadget(ui, server, stopOnCancel = FALSE, viewer = browserViewer()) # in a browser window
 }
 
 ggbrush(mtcars, "hp", "mpg")
 
-# alternatively, can register as an addin
-
 
 # TODO
-
+# adding register
+# read designing a gadget
+# https://www.rstudio.com/resources/webinars/introducing-shiny-gadgets-interactive-tools/?_ga=2.233156827.413649513.1648242002-1084037068.1636562202
 
 # other example from here: 
 # https://gist.github.com/wch/c4b857d73493e6550cba
