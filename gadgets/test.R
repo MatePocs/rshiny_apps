@@ -4,8 +4,61 @@
 library(shiny)
 library(miniUI)
 library(ggplot2)
+library(leaflet)
+library(DT)
+
+# SOURCES ####################################
+
+# summary: 
+# https://shiny.rstudio.com/articles/gadgets.html
+# https://shiny.rstudio.com/articles/gadget-ui.html
+
+# good video: 
+# https://www.rstudio.com/resources/webinars/introducing-shiny-gadgets-interactive-tools/
+
+# examples (more complicated than basic tutorials)
+# https://github.com/rstudio/miniUI/tree/master/examples
+# one does the miniTabStripPanel, the other is for the miniButtonBlock
+
+# EXAMPLES #########################################
+
+## 1 - base tutorial as written ---------------------------------------------
 
 ggbrush <- function(data, xvar, yvar) {
+  
+  ui <- miniPage(
+    gadgetTitleBar("Drag to select points"),
+    miniContentPanel(
+      # The brush="brush" argument means we can listen for
+      # brush events on the plot using input$brush.
+      plotOutput("plot", height = "100%", brush = "brush")
+    )
+  )
+  
+  server <- function(input, output, session) {
+    
+    # Render the plot
+    output$plot <- renderPlot({
+      # Plot the data with x/y vars indicated by the caller.
+      ggplot(data, aes_string(xvar, yvar)) + geom_point()
+    })
+    
+    # Handle the Done button being pressed.
+    observeEvent(input$done, {
+      # Return the brushed points. See ?shiny::brushedPoints.
+      stopApp(brushedPoints(data, input$brush))
+    })
+  }
+  
+  runGadget(ui, server)
+}
+
+ggbrush(mtcars, "hp", "mpg")
+
+## 2) - my modifications ------------------------------------
+# based on design bit
+
+ggbrush2 <- function(data, xvar, yvar) {
   
   ui <- miniPage(
     # gadgetTitleBar("Drag to select points"), # this automatically includes the Done and Cancel buttons
@@ -46,13 +99,79 @@ ggbrush <- function(data, xvar, yvar) {
   # runGadget(ui, server, stopOnCancel = FALSE, viewer = browserViewer()) # in a browser window
 }
 
-ggbrush(mtcars, "hp", "mpg")
+ggbrush2(mtcars, "hp", "mpg")
+
+## 3 - miniTabstripPanel --------------------------
+
+# note: these are completely independent of each other, weird example
+# point: there is a navigation bar in the bottom
+
+ui <- miniPage(
+  gadgetTitleBar("Shiny gadget example"),
+  miniTabstripPanel(
+    miniTabPanel("Parameters", icon = icon("sliders"),
+                 miniContentPanel(
+                   sliderInput("year", "Year", 1978, 2010, c(2000, 2010), sep = "")
+                 )
+    ),
+    miniTabPanel("Visualize", icon = icon("area-chart"),
+                 miniContentPanel(
+                   plotOutput("cars", height = "100%")
+                 )
+    ),
+    miniTabPanel("Map", icon = icon("map-o"),
+                 miniContentPanel(padding = 0,
+                                  leafletOutput("map", height = "100%")
+                 ),
+                 miniButtonBlock(
+                   actionButton("resetMap", "Reset")
+                 )
+    ),
+    miniTabPanel("Data", icon = icon("table"),
+                 miniContentPanel(
+                   DT::dataTableOutput("table")
+                 )
+    )
+  )
+)
+
+server <- function(input, output, session) {
+  output$cars <- renderPlot({
+    require(ggplot2)
+    ggplot(cars, aes(speed, dist)) + geom_point()
+  })
+  
+  output$map <- renderLeaflet({
+    force(input$resetMap)
+    
+    leaflet(quakes, height = "100%") %>% addTiles() %>%
+      addMarkers(lng = ~long, lat = ~lat)
+  })
+  
+  output$table <- DT::renderDataTable({
+    diamonds
+  })
+  
+  observeEvent(input$done, {
+    stopApp(TRUE)
+  })
+}
+
+runGadget(shinyApp(ui, server), viewer = paneViewer())
+
+## 4 - miniButtonBlock -----------------------
+
+# this is quite straightforward, you can put buttons in a small block
+
+
+
+
 
 
 # TODO
-# adding register
-# read designing a gadget
 # https://www.rstudio.com/resources/webinars/introducing-shiny-gadgets-interactive-tools/?_ga=2.233156827.413649513.1648242002-1084037068.1636562202
+# register as add-in in RStudio
+
 
 # other example from here: 
 # https://gist.github.com/wch/c4b857d73493e6550cba
