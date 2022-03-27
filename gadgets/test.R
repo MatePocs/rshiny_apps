@@ -167,20 +167,13 @@ runGadget(shinyApp(ui, server), viewer = paneViewer())
 
 
 
+# 5 - linear regression example 
 
-# TODO
-# https://www.rstudio.com/resources/webinars/introducing-shiny-gadgets-interactive-tools/?_ga=2.233156827.413649513.1648242002-1084037068.1636562202
-# register as add-in in RStudio
-
-
-# other example from here: 
 # https://gist.github.com/wch/c4b857d73493e6550cba
 
 
 lmGadget <- function(data, xvar, yvar) {
-  library(miniUI)
-  library(ggplot2)
-  
+
   ui <- miniPage(
     gadgetTitleBar("Interactive lm"),
     miniContentPanel(
