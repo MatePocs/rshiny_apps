@@ -17,11 +17,15 @@ library(data.table)
 my_plot_gadget <- function(data, x_axis_variable = NULL, y_axis_variable = NULL){
   
   column_names <- colnames(data)
-  colours <- c("red", "amber", "green", "deselect")
+  colours <- c("red", "amber", "green", "none")
   
-  draw_main_plot <- function(data, x_axis_variable, y_axis_variable){
-    ggplot(data = data, aes_string(x = x_axis_variable, y = y_axis_variable)) + 
-      geom_point()
+  draw_main_plot <- function(data, x_axis_variable, y_axis_variable, colourcodes){
+    ggplot(data = data[colourcodes == "none"], 
+           aes_string(x = x_axis_variable, y = y_axis_variable)) + 
+      geom_point(colour = "gray70") + 
+      geom_point(data = data[colourcodes == "red"], colour = "#D2222D") + 
+      geom_point(data = data[colourcodes == "amber"], colour = "#FFBF00") + 
+      geom_point(data = data[colourcodes == "green"], colour = "#238823")
   }
   
   ui <- miniPage(
@@ -37,27 +41,36 @@ my_plot_gadget <- function(data, x_axis_variable = NULL, y_axis_variable = NULL)
                                   selected = ifelse(is.null(y_axis_variable), 
                                                     column_names[2], y_axis_variable))
                       ),
-              plotOutput("main_plot", height = "100%")
+              plotOutput("main_plot", height = "100%", brush = "main_plot_brush")
               )
       )
     )
   
   server <- function(input, output){
     
-    # x_axis_variable <- reactive(input$x_axis_variable)
-    # y_axis_variable <- reactive(input$y_axis_variable)
-    # 
-    # main_plot <- reactive(draw_main_plot(data, x_axis_variable(), y_axis_variable()))
-    # 
+    results <- reactiveValues(
+      colourcodes = rep("none", nrow(data)))
+        
+    # when there is a brush event, update the colorcodes accordingly
+    
+    observeEvent(input$main_plot_brush,{
+      currently_selected_points <- brushedPoints(data, input$main_plot_brush, allRows = TRUE)
+      cat(sum(currently_selected_points$selected_))
+      results$colourcodes[currently_selected_points$selected_] <- input$colour
+    })
+    
     main_plot <- reactive(
       draw_main_plot(
-        data, input$x_axis_variable, input$y_axis_variable))
+        data, input$x_axis_variable, input$y_axis_variable, results$colourcodes))
     
     output$main_plot <- renderPlot(main_plot())
     
     # handle cancel and done
     observeEvent(input$cancel, {
       stopApp(NULL)
+    })
+    observeEvent(input$done, {
+      stopApp(results$colourcodes)
     })
     
   }
@@ -75,6 +88,10 @@ my_plot_gadget <- function(data, x_axis_variable = NULL, y_axis_variable = NULL)
 
 my_plot_gadget(iris_data)
 
+temp <- .Last.value
+
+my_plot_gadget(iris, "Petal.Length", "Sepal.Width")
+
 my_plot_gadget(iris_data, "Sepal.Length", "Sepal.Width")
 
 colnames(iris_data)
@@ -82,3 +99,11 @@ colnames(iris_data)
 # Notes
 # might need a toggle button that determines if we are on the log scale
 
+temp1 <- rep("none", 10)
+temp2  <- rep(FALSE, 10)
+temp2[1] <- TRUE
+temp2[5] <- TRUE
+temp1[temp2] <- "red"
+temp1
+
+rm(temp1, temp2)

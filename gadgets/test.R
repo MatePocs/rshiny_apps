@@ -167,7 +167,7 @@ runGadget(shinyApp(ui, server), viewer = paneViewer())
 
 
 
-# 5 - linear regression example 
+## 5 - linear regression example -------------
 
 # https://gist.github.com/wch/c4b857d73493e6550cba
 
