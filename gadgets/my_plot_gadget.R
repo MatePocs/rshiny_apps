@@ -1,16 +1,9 @@
 
-# PLAN ########################################
-
-# input: data.table
-# left bar: 3 dropdowns: variable to show on x / y axis, and a red-amber-green-deselect dropdown
-# on the plot, with the brush tool, whatever color is selected, the points are updated accordingly
-
 # LIBRARIES ###################################
 
 library(shiny)
 library(miniUI)
 library(ggplot2)
-library(data.table)
 
 # GADGET ###############################
 
@@ -19,19 +12,24 @@ my_plot_gadget <- function(data, x_axis_variable = NULL, y_axis_variable = NULL)
   column_names <- colnames(data)
   colours <- c("red", "amber", "green", "none")
   
+  red_colourcode <- "#D2222D"
+  amber_colourcode <- "#FFBF00"
+  green_colourcode <- "#238823"
+  none_colourcode <- "grey70"
+  
   draw_main_plot <- function(data, x_axis_variable, y_axis_variable, colourcodes){
-    ggplot(data = data[colourcodes == "none"], 
+    ggplot(data = data[colourcodes == "none",], 
            aes_string(x = x_axis_variable, y = y_axis_variable)) + 
-      geom_point(colour = "gray70") + 
-      geom_point(data = data[colourcodes == "red"], colour = "#D2222D") + 
-      geom_point(data = data[colourcodes == "amber"], colour = "#FFBF00") + 
-      geom_point(data = data[colourcodes == "green"], colour = "#238823")
+      geom_point(colour = none_colourcode) + 
+      geom_point(data = data[colourcodes == "red",], colour = red_colourcode) + 
+      geom_point(data = data[colourcodes == "amber",], colour = amber_colourcode) + 
+      geom_point(data = data[colourcodes == "green",], colour = green_colourcode)
   }
   
   ui <- miniPage(
     gadgetTitleBar("Group Observations"), 
     miniContentPanel(
-      fillRow(flex = c(NA, 1), # NA: the space it naturally needs
+      fillRow(flex = c(NA, 1),
               fillCol(flex = c(NA, NA, NA), width = "150px", 
                       selectInput("colour", "Colour", colours),
                       selectInput("x_axis_variable", "X Axis Variable", column_names, 
@@ -46,24 +44,27 @@ my_plot_gadget <- function(data, x_axis_variable = NULL, y_axis_variable = NULL)
       )
     )
   
-  server <- function(input, output){
+  server <- function(input, output, session){
     
     results <- reactiveValues(
       colourcodes = rep("none", nrow(data)))
         
-    # when there is a brush event, update the colorcodes accordingly
-    
+    # when there is a brush event, update the colourcodes accordingly
+    # also clears the brush, otherwise it just lingers there
     observeEvent(input$main_plot_brush,{
-      currently_selected_points <- brushedPoints(data, input$main_plot_brush, allRows = TRUE)
-      cat(sum(currently_selected_points$selected_))
-      results$colourcodes[currently_selected_points$selected_] <- input$colour
+      results$colourcodes[
+        brushedPoints(data, input$main_plot_brush, allRows = TRUE)$selected_] <- input$colour
     })
     
+    # the plot updates every time the variables or the colourcode changes
     main_plot <- reactive(
       draw_main_plot(
         data, input$x_axis_variable, input$y_axis_variable, results$colourcodes))
-    
     output$main_plot <- renderPlot(main_plot())
+    
+    observeEvent(main_plot(), {
+      session$resetBrush("main_plot_brush")  
+    })
     
     # handle cancel and done
     observeEvent(input$cancel, {
@@ -72,38 +73,15 @@ my_plot_gadget <- function(data, x_axis_variable = NULL, y_axis_variable = NULL)
     observeEvent(input$done, {
       stopApp(results$colourcodes)
     })
-    
   }
-  
   runGadget(ui, server)
-  
 }
 
 
+# HOW TO USE #################################
+
+results <- my_plot_gadget(iris)
+results <- my_plot_gadget(iris, "Petal.Length", "Sepal.Width")
 
 
-# TEST #################################
 
-# iris_data <- data.table(iris)
-
-my_plot_gadget(iris_data)
-
-temp <- .Last.value
-
-my_plot_gadget(iris, "Petal.Length", "Sepal.Width")
-
-my_plot_gadget(iris_data, "Sepal.Length", "Sepal.Width")
-
-colnames(iris_data)
-
-# Notes
-# might need a toggle button that determines if we are on the log scale
-
-temp1 <- rep("none", 10)
-temp2  <- rep(FALSE, 10)
-temp2[1] <- TRUE
-temp2[5] <- TRUE
-temp1[temp2] <- "red"
-temp1
-
-rm(temp1, temp2)
